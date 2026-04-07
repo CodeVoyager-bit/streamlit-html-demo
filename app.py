@@ -2,8 +2,44 @@ import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="Linear Regression Explorer", layout="wide")
-st.title("Linear Regression — Interactive Visualizer")
+# Premium UI matplotlib configuration
+plt.style.use("dark_background")
+plt.rcParams.update({
+    "axes.facecolor": "#1e1e1e",
+    "axes.edgecolor": "#333333",
+    "grid.color": "#333333",
+    "text.color": "#e0e0e0",
+    "axes.labelcolor": "#e0e0e0",
+    "xtick.color": "#e0e0e0",
+    "ytick.color": "#e0e0e0",
+})
+
+st.set_page_config(page_title="Linear Regression Explorer", page_icon="📈", layout="wide")
+
+st.markdown("""
+<style>
+    /* Gradient Title */
+    .title-text {
+        font-family: 'Inter', sans-serif;
+        background: -webkit-linear-gradient(45deg, #00d2ff, #3a7bd5);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-size: 42px;
+        font-weight: 800;
+        margin-bottom: 20px;
+    }
+    .stMetric label {
+        color: #888888 !important;
+    }
+    [data-testid="stMetricValue"] {
+        color: #00d2ff !important;
+    }
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 15px;
+    }
+</style>
+<div class="title-text">✨ Linear Regression Visualizer</div>
+""", unsafe_allow_html=True)
 
 # ── Sidebar Controls ──────────────────────────────────────────────────────────
 with st.sidebar:
@@ -64,18 +100,29 @@ Z = np.array([[compute_mse(X, y, mi, bi) for mi in m_grid] for bi in b_grid])
 
 # ── Tabs ──────────────────────────────────────────────────────────────────────
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-    "Data & Line Fit",
-    "Error Visualization",
-    "Loss Landscape",
-    "Gradient Descent",
-    "Learning Rate Experiments",
-    "Noise & Robustness",
+    "📍 Data & Line Fit",
+    "📏 Error Visualization",
+    "🗺️ Loss Landscape",
+    "📉 Gradient Descent",
+    "🧪 Learning Rate",
+    "⚡ Noise & Robustness",
 ])
 
 # ── Tab 1: Data & Line Fit ────────────────────────────────────────────────────
 with tab1:
     st.info("Move the **Slope (m)** and **Intercept (b)** sliders in the sidebar to fit the line to the data. Watch the MSE drop as you get closer to the true relationship (y = 2x + 1)!")
 
+    with st.expander("📖 What does this graph mean?"):
+        st.markdown("""
+        **Linear Regression** tries to find the best-fitting straight line through a set of data points.
+        * **Slope (m)** determines how steep the line is.
+        * **Intercept (b)** determines where the line crosses the y-axis.
+        * **Data Points** (blue) represent the actual observations.
+        * **Fitted Line** (red) represents the model's prediction.
+        
+        The goal is to adjust `m` and `b` to make the red line as close to the blue points as possible. We measure this closeness using **Mean Squared Error (MSE)**.
+        """)
+        
     fig, ax = plt.subplots(figsize=(8, 5))
     ax.scatter(X, y, color="steelblue", alpha=0.7, label="Data points")
     ax.plot(X, m * X + b, color="red", linewidth=2, label=f"y = {m:.1f}x + {b:.1f}")
@@ -91,6 +138,17 @@ with tab1:
 # ── Tab 2: Error Visualization ────────────────────────────────────────────────
 with tab2:
     st.info("The **red dashed lines** are residuals — the vertical distance between each data point and the model's prediction. MSE averages the squares of all these distances.")
+
+    with st.expander("📖 Understanding Residuals and MSE"):
+        st.markdown("""
+        The **red dashed lines** you see are called **Residuals**. They represent the error for each individual prediction.
+        
+        * **Residual** = Actual Value ($y$) - Predicted Value ($\\hat{y}$)
+        * If a point lies exactly on the line, its residual is zero.
+        * If a point is far from the line, its residual is large.
+        
+        **Mean Squared Error (MSE)** takes all these residuals, squares them (so negative errors don't cancel positive ones), and averages them. This single number tells us how "wrong" our line is overall.
+        """)
 
     fig, ax = plt.subplots(figsize=(8, 5))
     y_pred = m * X + b
@@ -111,8 +169,19 @@ with tab2:
 with tab3:
     st.info("This contour map shows MSE for every combination of slope and intercept. The **red dot** marks your current (m, b). Move the sliders — the dot follows! The darker the region, the lower the loss.")
 
+    with st.expander("📖 How to read this contour map"):
+        st.markdown("""
+        Think of MSE as a physical landscape with hills and valleys.
+        * The **X-axis** is the Slope (m) and the **Y-axis** is the Intercept (b).
+        * The **color** represents the MSE value (the "height" of the terrain).
+        * Bright regions (yellow/white) are extremely high MSE (bad choices).
+        * Dark regions (purple/black) are very low MSE (good choices).
+        
+        Your **Current (m, b)** is represented by the red dot. To build the best model, we want this dot to roll down into the darkest, lowest point of the valley (the global minimum).
+        """)
+
     fig, ax = plt.subplots(figsize=(7, 5))
-    cp = ax.contourf(M, B, Z, levels=30, cmap="viridis")
+    cp = ax.contourf(M, B, Z, levels=30, cmap="plasma")
     plt.colorbar(cp, ax=ax, label="MSE")
     ax.scatter([m], [b], color="red", s=120, zorder=5, label=f"Current (m={m:.1f}, b={b:.1f})")
     ax.set_xlabel("Slope (m)")
@@ -126,13 +195,25 @@ with tab3:
 with tab4:
     st.info("Gradient Descent starts from your chosen **(m, b)** and iteratively steps downhill on the loss surface. The white path shows how the model learns, and the chart shows loss decreasing over iterations.")
 
+    with st.expander("📖 The Mechanics of Gradient Descent"):
+        st.markdown("""
+        Finding the absolute bottom of the loss landscape (Tab 3) manually is hard. **Gradient Descent** automates this!
+        
+        1. It starts at your chosen red dot.
+        2. It calculates the **gradient** (the slope of the terrain right under its feet).
+        3. It takes a small step in the direction that goes **downhill** the fastest.
+        4. It repeats this process until it reaches the bottom.
+        
+        The white trail on the left shows the actual path the algorithm took across the MSE valley. The graph on the right proves that the error (loss) consistently drops with every step.
+        """)
+
     ms_hist, bs_hist, losses_hist = run_gd(X, y, m, b, lr, n_iter)
 
     col1, col2 = st.columns(2)
 
     with col1:
         fig, ax = plt.subplots(figsize=(6, 5))
-        ax.contourf(M, B, Z, levels=30, cmap="viridis", alpha=0.8)
+        ax.contourf(M, B, Z, levels=30, cmap="plasma", alpha=0.9)
         ax.plot(ms_hist, bs_hist, color="white", linewidth=1.5, alpha=0.9, label="GD path")
         ax.scatter([ms_hist[0]], [bs_hist[0]], color="yellow", s=80, zorder=5, label="Start")
         ax.scatter([ms_hist[-1]], [bs_hist[-1]], color="red", s=80, zorder=5, label="End")
@@ -160,6 +241,15 @@ with tab4:
 with tab5:
     st.info("Compare how different learning rates affect convergence. **Too small** = very slow. **Too large** = unstable or diverges. The right rate converges smoothly and quickly.")
 
+    with st.expander("📖 Why does Learning Rate matter?"):
+        st.markdown("""
+        The step size Gradient Descent takes in each iteration is controlled by the **Learning Rate (α)**.
+        
+        * **Too small (blue)**: The algorithm gets there eventually, but takes way too long because it's taking baby steps.
+        * **Just right (green)**: Converges quickly and smoothly to the bottom.
+        * **Too large (red)**: It overshoots the valley entirely, bouncing up the walls, causing the error to explode (diverge) instead of decrease!
+        """)
+
     rates  = [0.001, 0.01, 0.05, 0.2]
     colors = ["steelblue", "green", "orange", "red"]
     labels = ["0.001 — too slow", "0.01 — good", "0.05 — fast", "0.2 — risky"]
@@ -180,6 +270,15 @@ with tab5:
 # ── Tab 6: Noise & Robustness ─────────────────────────────────────────────────
 with tab6:
     st.info("Linear Regression is sensitive to **outliers** because squaring errors amplifies their effect. Compare how the fitted line shifts when outliers are introduced.")
+
+    with st.expander("📖 The Impact of Outliers"):
+        st.markdown("""
+        Linear Regression works well, but it has a major weakness: **Outliers**.
+        
+        Because the MSE formula mathematically squares the errors $(y - \\hat{y})^2$, a point that is extremely far away from the line produces a massive penalty. To minimize this enormous penalty, the algorithm "tilts" the line heavily toward the outlier.
+        
+        Notice how just a few red outlier points (right chart) can literally drag the entire regression line away from the main cluster of data!
+        """)
 
     X_clean, y_clean = generate_data(n_points, noise=0.5, n_out=0)
     X_noisy, y_noisy = generate_data(n_points, noise_level, n_out=max(n_outliers, 3))
